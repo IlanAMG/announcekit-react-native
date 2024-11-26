@@ -18,7 +18,12 @@ export interface AnnounceKitProps {
   };
   user_token?: string;
   labels?: string[];
+  onRequestClose?: (state: any) => void;
   children?: React.ReactNode;
+}
+
+export interface UnReadProps {
+  localLastRead?: number;
 }
 
 export function AnnounceKitProvider({
@@ -28,6 +33,7 @@ export function AnnounceKitProvider({
   user_token,
   labels,
   data,
+  onRequestClose = () => null,
   children,
 }: AnnounceKitProps) {
   const [state, setState] = React.useState<any>({});
@@ -51,21 +57,26 @@ export function AnnounceKitProvider({
   return (
     <Ctx.Provider value={[state, params, { widget, setState, setIsOpen }]}>
       {children}
-      <Widget visible={isOpen} onRequestClose={() => setIsOpen(false)} />
+      <Widget visible={isOpen} onRequestClose={() => {
+        onRequestClose(state);
+        setIsOpen(false);
+      }} />
     </Ctx.Provider>
   );
 }
 
-export function useUnreadCount(): number | undefined {
+export function useUnreadCount({ localLastRead }: UnReadProps = {}): number | undefined {
   const [state] = React.useContext<any>(Ctx);
 
   if (!state.posts) {
     return undefined;
   }
 
-  if (state.userData?.lastRead) {
+  const lastRead = localLastRead || state.userData?.lastRead;
+  
+  if (lastRead) {
     return state.posts.filter(
-      (p) => new Date(p.visible_at).getTime() > Number(state.userData.lastRead)
+      (p) => new Date(p.visible_at).getTime() > Number(lastRead)
     ).length;
   }
 
